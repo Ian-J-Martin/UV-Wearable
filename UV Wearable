@@ -1,0 +1,79 @@
+#include <vector>
+ 
+
+
+STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
+int SENSOR_POWER = D0;
+int SENSOR_READ0 = A0;
+
+
+
+const String KEY = "<XFI64HQ24PH58UZJ>";
+
+void setup() {
+    pinMode(SENSOR_POWER, OUTPUT);
+    Particle.publish("delete_info",  "", PRIVATE);
+    Serial.begin(9600);
+}
+
+void loop() {
+    
+    //places wait minutes times oneMinute
+    int sleepSeconds = 900;
+    //System.sleep(SLEEP_MODE_DEEP, sleepSeconds);
+    if(WiFi.ready()){
+        publishToDatabase(sensorRead());
+       // System.sleep(sleepSeconds);
+    }
+  int UVvalue0 = analogRead(SENSOR_READ0);
+  
+    Serial.print(UVvalue0);
+    Serial.print(", ");
+    
+    delay(100);
+    
+}
+
+double sensorRead(){
+    double UVvalue;
+    double highest = 0;
+    std::vector<int> pinArray = {SENSOR_READ0};
+    
+    for(int i = 0; i < pinArray.size(); i++){
+        UVvalue = sensorRead(pinArray[i]);
+        if(UVvalue > highest)
+highest = UVvalue;
+    }
+     //possibly check what the voltage from the pin D0 and replace findings here
+    double VOLTAGE = 3.3;
+
+    double convRate = VOLTAGE/1023.0;//raw sensor value is mapped into 1023 bins. To convert we need to remap to VOLTAGE
+    
+    //found highest value, now we need to convert
+    UVvalue = highest;
+    //found uvVoltage
+    UVvalue *= convRate;
+    //found uvCurrent
+    UVvalue = UVvalue/4.3;
+    //found uvApower
+    UVvalue = (UVvalue * 1000) / 113;
+    
+    
+    return UVvalue;
+}
+
+double sensorRead(int SENSOR){
+    double UVvalue;
+    
+    digitalWrite(SENSOR_POWER, HIGH);
+    delay(300);
+    UVvalue = analogRead(SENSOR);
+    digitalWrite(SENSOR_POWER, LOW);
+    
+    return UVvalue;
+}
+
+void publishToDatabase(double value){
+     Particle.publish("thingSpeakWrite_", "{ \"1\": \"" + String(value) + "\"," +
+             "\"k\": \"" + KEY + "\" }", 60, PRIVATE);
+}
